@@ -132,5 +132,56 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
+## Docker Instructions
+
+### Build the Docker Image
+
+To build the Docker image, run the following command in the root directory of the project:
+
+```bash
+docker build -t paddleocr-app .
+```
+
+### Run the Docker Container
+
+To run the Docker container, use the following command:
+
+```bash
+docker run -d -p 5000:5000 --name paddleocr-container paddleocr-app
+```
+
+This will start the container in detached mode and map port 5000 from the container to port 5000 on your host machine.
+
+### Access the Application
+
+Once the container is running, you can access the application at:
+
+```
+http://localhost:5000
+```
+
+### Check Container Logs
+
+To check the logs of the running container, use the following command:
+
+```bash
+docker logs paddleocr-container
+```
+
+### Stop and Remove the Container
+
+To stop and remove the container, use the following commands:
+
+```bash
+docker stop paddleocr-container
+docker rm paddleocr-container
+```
+
+## Additional Information
+
+- The application is configured to run in debug mode.
+- The Flask app is bound to `0.0.0.0` to allow external access.
+- The Docker image includes all necessary dependencies for PaddleOCR.
+
 
 
