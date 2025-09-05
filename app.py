@@ -87,13 +87,26 @@ def extract_oman_id_info(result):
     all_text_with_space = [(line[0].upper(), line[1]) for line in all_results]
 
     # --- Card Type Detection ---
+    found_identity = False
+    found_resident = False
+    found_card = False
+    
     for text, conf in all_text_with_space:
-        if "IDENTITY" in text and "CARD" in text:
-            id_info['type'] = "identity"
-            break
-        elif "RESIDENT" in text and "CARD" in text:
-            id_info['type'] = "residential"
-            break
+        if "IDENTITY" in text or "IDENTIFICATION" in text:
+            found_identity = True
+        if "RESIDENT" in text or "RESIDENTIAL" in text:
+            found_resident = True
+        if "CARD" in text:
+            found_card = True
+    
+    if found_identity and found_card:
+        id_info['type'] = "identity"
+    elif found_resident and found_card:
+        id_info['type'] = "residential"
+    elif found_identity:
+        id_info['type'] = "identity"
+    elif found_resident:
+        id_info['type'] = "residential"
 
     # --- Civil Number Extraction (Optimized) ---
     best_civil = None
