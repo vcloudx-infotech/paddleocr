@@ -1,20 +1,17 @@
 import os
 import re
+
+import cv2
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
-from paddleocr import PaddleOCR
-import cv2
-import numpy as np
+
+from ocr_engine import run_ocr
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Create uploads folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-# Initialize PaddleOCR
-ocr = PaddleOCR(use_angle_cls=True, lang='en')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
@@ -42,6 +39,9 @@ def extract_pan_info(result):
         'signature': 'Not Available'
     }
     
+    if not result or not result[0]:
+        return pan_info
+
     # Process each line of OCR result
     for i, line in enumerate(result[0]):
         text = line[1][0].strip()  # The detected text
@@ -131,8 +131,7 @@ def upload_file():
             if img is None:
                 return jsonify({'error': 'Could not read image'}), 400
             
-            # Perform OCR
-            result = ocr.ocr(img, cls=True)
+            result = run_ocr(img)
             
             # Extract PAN card information
             pan_info = extract_pan_info(result)
@@ -151,4 +150,6 @@ def upload_file():
     return jsonify({'error': 'File type not allowed'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    debug = os.environ.get('FLASK_DEBUG', '0') == '1'
+    port = int(os.environ.get('PORT', '5000'))
+    app.run(debug=debug, host='0.0.0.0', port=port) 

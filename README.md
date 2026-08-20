@@ -12,9 +12,11 @@ This is a Flask-based web application that uses PaddleOCR to extract information
 
 ## Prerequisites
 
-- Python 3.7, 3.8, 3.9, or 3.10 (PaddleOCR does not support Python 3.11+)
+- Python 3.11, 3.12, 3.13, or **3.14** (3.14 recommended)
 - pip (Python package installer)
 - Git (for cloning the repository)
+
+> **Why not PaddlePaddle directly?** Official `paddlepaddle` wheels currently stop at CPython 3.13 (`cp313`). There are no `cp314` wheels, so this app runs PP-OCRv5 through [onnxocr](https://pypi.org/project/onnxocr/) and ONNX Runtime, which do support Python 3.14. The OCR result format stays compatible with PaddleOCR 2.x.
 
 ## Step-by-Step Installation Guide
 
@@ -26,8 +28,8 @@ cd <repository-name>
 
 ### 2. Create and Activate Virtual Environment
 ```bash
-# Create virtual environment
-python -m venv venv
+# Create virtual environment (use the 3.14 interpreter)
+python3.14 -m venv venv
 
 # Activate virtual environment
 # On Windows:
@@ -38,10 +40,7 @@ source venv/bin/activate
 
 ### 3. Install Dependencies
 ```bash
-# Upgrade pip
 python -m pip install --upgrade pip
-
-# Install requirements
 pip install -r requirements.txt
 ```
 
@@ -55,17 +54,13 @@ mkdir uploads
 
 #### Development Mode
 ```bash
-python app.py
+FLASK_DEBUG=1 python app.py
 ```
 The application will be available at `http://localhost:5000`
 
 #### Production Mode (Using Gunicorn)
 ```bash
-# Install gunicorn
-pip install gunicorn
-
-# Run with gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn --bind 0.0.0.0:5000 --workers 1 --timeout 120 app:app
 ```
 
 ### 6. Setting Up as a Service (Linux)
@@ -85,7 +80,7 @@ After=network.target
 User=<your-username>
 WorkingDirectory=/path/to/your/app
 Environment="PATH=/path/to/your/app/venv/bin"
-ExecStart=/path/to/your/app/venv/bin/gunicorn -w 4 -b 0.0.0.0:5000 app:app
+ExecStart=/path/to/your/app/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 1 --timeout 120 app:app
 Restart=always
 
 [Install]
@@ -179,9 +174,9 @@ docker rm paddleocr-container
 
 ## Additional Information
 
-- The application is configured to run in debug mode.
-- The Flask app is bound to `0.0.0.0` to allow external access.
-- The Docker image includes all necessary dependencies for PaddleOCR.
+- Docker runs Python 3.14 with Gunicorn (one worker; the OCR model is loaded per process).
+- Local `python app.py` binds to `0.0.0.0` and reads `FLASK_DEBUG` / `PORT`.
+- The image includes OpenCV, ONNX Runtime, and PP-OCRv5 models via onnxocr.
 
 
 

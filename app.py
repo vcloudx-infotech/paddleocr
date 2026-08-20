@@ -1,25 +1,22 @@
 import os
 import re
+import logging
+from difflib import SequenceMatcher
+
+import cv2
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
-from paddleocr import PaddleOCR
-import cv2
-import numpy as np
-from difflib import SequenceMatcher
-import logging
+
+from ocr_engine import run_ocr
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Create uploads folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Initialize PaddleOCR
-ocr = PaddleOCR(use_angle_cls=True, lang='en')
-
-# Configure minimal logging
 logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
@@ -34,8 +31,7 @@ def preprocess_image_for_ocr(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     processed_img = clahe.apply(gray)
-    
-    return processed_img
+    return cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR)
 
 def similarity(a, b):
     """Calculate similarity between two strings"""
@@ -234,16 +230,15 @@ def upload_file():
             # Preprocess image with single technique
             processed_img = preprocess_image_for_ocr(img)
             
-            # Perform single OCR call
-            result = ocr.ocr(processed_img, cls=True)
-            
-            # Extract Oman ID card information
+            result = run_ocr(processed_img)
             id_info = extract_oman_id_info(result)
-            
-            # Print extracted values for debugging
-            print(f"Civil Number: {id_info.get('civil_number', {}).get('value', 'NOT FOUND')}")
-            print(f"Expiry Date: {id_info.get('expiry_date', {}).get('value', 'NOT FOUND')}")
-            print(f"Date of Birth: {id_info.get('date_of_birth', {}).get('value', 'NOT FOUND')}")
+
+            civil = (id_info.get('civil_number') or {}).get('value', 'NOT FOUND')
+            expiry = (id_info.get('expiry_date') or {}).get('value', 'NOT FOUND')
+            dob = (id_info.get('date_of_birth') or {}).get('value', 'NOT FOUND')
+            print(f"Civil Number: {civil}")
+            print(f"Expiry Date: {expiry}")
+            print(f"Date of Birth: {dob}")
             print(f"Card Type: {id_info.get('type', 'NOT DETECTED')}")
             print(f"File Size: {file_size_mb} MB")
             
@@ -273,4 +268,6 @@ def not_found(error):
     }), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0') 
+    debug = os.environ.get('FLASK_DEBUG', '0') == '1'
+    port = int(os.environ.get('PORT', '5000'))
+    app.run(debug=debug, host='0.0.0.0', port=port) 
